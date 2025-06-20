@@ -1,0 +1,215 @@
+import yaml
+
+# ==== Clases ====
+
+class Alumno:
+    def __init__(self, nombre, codigo, mac):
+        self.nombre = nombre
+        self.codigo = codigo
+        self.mac = mac
+
+class Servicio:
+    def __init__(self, nombre, protocolo, puerto):
+        self.nombre = nombre
+        self.protocolo = protocolo
+        self.puerto = puerto
+
+class Servidor:
+    def __init__(self, nombre, direccion_ip):
+        self.nombre = nombre
+        self.direccion_ip = direccion_ip
+        self.servicios = []
+
+    def agregar_servicio(self, servicio):
+        self.servicios.append(servicio)
+
+class Curso:
+    def __init__(self, codigo, nombre, estado):
+        self.codigo = codigo
+        self.nombre = nombre
+        self.estado = estado
+        self.alumnos = []
+        self.servidores = []
+
+    def agregar_alumno(self, cod_alumno):
+        if cod_alumno not in self.alumnos:
+            self.alumnos.append(cod_alumno)
+
+    def remover_alumno(self, cod_alumno):
+        if cod_alumno in self.alumnos:
+            self.alumnos.remove(cod_alumno)
+
+    def agregar_servidor(self, servidor):
+        self.servidores.append(servidor)
+
+# ==== Bases de datos en memoria ====
+
+alumnos = {}
+cursos = {}
+servidores = {}
+
+# ==== Función de importación compatible con tu YAML ====
+
+def importar_datos(nombre_archivo):
+    try:
+        with open(nombre_archivo, 'r') as f:
+            data = yaml.safe_load(f)
+
+        for a in data['alumnos']:
+            alumnos[a['codigo']] = Alumno(a['nombre'], a['codigo'], a['mac'])
+
+        for s in data['servidores']:
+            srv = Servidor(s['nombre'], s['ip'])
+            for servicio in s['servicios']:
+                srv.agregar_servicio(Servicio(servicio['nombre'], servicio['protocolo'], servicio['puerto']))
+            servidores[s['nombre']] = srv
+
+        for c in data['cursos']:
+            curso = Curso(c['codigo'], c['nombre'], c['estado'])
+            if 'alumnos' in c:
+                for cod in c['alumnos']:
+                    curso.agregar_alumno(cod)
+            if 'servidores' in c:
+                for srv in c['servidores']:
+                    srv_nombre = srv.get('nombre')
+                    if srv_nombre and srv_nombre in servidores:
+                        curso.agregar_servidor(servidores[srv_nombre])
+            cursos[c['codigo']] = curso
+
+        print("Datos importados correctamente.\n")
+
+    except Exception as e:
+        print(f"Error al importar archivo: {e}")
+
+# ==== Submenús ====
+
+def submenu_cursos():
+    while True:
+        print("\n--- Submenú: Cursos ---")
+        print("1) Listar cursos")
+        print("2) Actualizar curso (agregar/quitar alumno)")
+        print("3) Mostrar detalle de curso")
+        print("0) Volver al menú principal")
+        op = input(">>> ")
+
+        if op == "1":
+            for c in cursos.values():
+                print(f"{c.codigo}: {c.nombre} - Estado: {c.estado}")
+        elif op == "2":
+            cod = input("Código del curso: ")
+            if cod in cursos:
+                sub_op = input("1) Agregar alumno  2) Quitar alumno\n>>> ")
+                cod_al = int(input("Código del alumno: "))
+                if sub_op == "1":
+                    cursos[cod].agregar_alumno(cod_al)
+                    print("Alumno agregado.")
+                elif sub_op == "2":
+                    cursos[cod].remover_alumno(cod_al)
+                    print("Alumno removido.")
+        elif op == "3":
+            cod = input("Código del curso: ")
+            if cod in cursos:
+                curso = cursos[cod]
+                print(f"{curso.codigo} - {curso.nombre} - Estado: {curso.estado}")
+                print("Alumnos:")
+                for codal in curso.alumnos:
+                    al = alumnos.get(codal)
+                    if al:
+                        print(f"- {al.nombre} ({al.codigo})")
+        elif op == "0":
+            break
+
+def submenu_alumnos():
+    while True:
+        print("\n--- Submenú: Alumnos ---")
+        print("1) Listar alumnos")
+        print("2) Mostrar detalle de alumno")
+        print("0) Volver")
+        op = input(">>> ")
+        if op == "1":
+            for a in alumnos.values():
+                print(f"{a.codigo}: {a.nombre} - MAC: {a.mac}")
+        elif op == "2":
+            cod = int(input("Código del alumno: "))
+            a = alumnos.get(cod)
+            if a:
+                print(f"Nombre: {a.nombre}, Código: {a.codigo}, MAC: {a.mac}")
+        elif op == "0":
+            break
+
+def submenu_servidores():
+    while True:
+        print("\n--- Submenú: Servidores ---")
+        print("1) Listar servidores")
+        print("2) Mostrar detalle de servidor")
+        print("0) Volver")
+        op = input(">>> ")
+        if op == "1":
+            for s in servidores.values():
+                print(f"{s.nombre} - IP: {s.direccion_ip}")
+        elif op == "2":
+            nom = input("Nombre del servidor: ")
+            srv = servidores.get(nom)
+            if srv:
+                print(f"Servidor {srv.nombre} - IP: {srv.direccion_ip}")
+                for sv in srv.servicios:
+                    print(f"- {sv.nombre} ({sv.protocolo}:{sv.puerto})")
+        elif op == "0":
+            break
+
+def submenu_conexiones():
+    while True:
+        print("\n--- Submenú: Conexiones ---")
+        print("1) Crear conexión")
+        print("2) Listar conexiones")
+        print("3) Borrar conexión")
+        print("0) Volver")
+        op = input(">>> ")
+        if op in ["1", "2", "3"]:
+            print("Funcionalidad no implementada.")
+        elif op == "0":
+            break
+
+# ==== Menú principal ====
+
+def main():
+    while True:
+        print("\n" + "#" * 58)
+        print("Network Policy manager de la UPSM")
+        print("#" * 58)
+        print("\nSeleccione una opción:\n")
+        print("1) Importar")
+        print("2) Exportar")
+        print("3) Cursos")
+        print("4) Alumnos")
+        print("5) Servidores")
+        print("6) Políticas")
+        print("7) Conexiones")
+        print("8) Salir")
+
+        op = input(">>> ")
+
+        if op == "1":
+            archivo = input("Ingrese el nombre del archivo YAML: ")
+            importar_datos(archivo)
+        elif op == "2":
+            print("Funcionalidad no implementada.")
+        elif op == "3":
+            submenu_cursos()
+        elif op == "4":
+            submenu_alumnos()
+        elif op == "5":
+            submenu_servidores()
+        elif op == "6":
+            print("Funcionalidad no implementada.")
+        elif op == "7":
+            submenu_conexiones()
+        elif op == "8":
+            print("Saliendo del sistema.")
+            break
+        else:
+            print("Opción inválida. Intente de nuevo.")
+
+# ==== Ejecutar ====
+if __name__ == "__main__":
+    main()
